@@ -1,0 +1,7 @@
+{
+  "device_name": "FileBeam-Lite-PC",
+  "port": 5000,
+  "max_size_mb": 10,
+  "received_dir": "received",
+  "shared_dir": "shared"
+}

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FileBeam Lite - 局域网跨设备极速互传 (免费开源版)</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">⚡</span>
+        <div class="brand-text">
+          <h1>FileBeam Lite <span class="badge-lite">免费开源版</span></h1>
+          <p class="subtitle">电脑与手机免装 APP · 局域网扫码即传</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-help" onclick="openHelpModal()">📖 使用说明与对比</button>
+        <!-- 预留升级到专业版的入口链接 -->
+        <a class="btn btn-pro" href="https://wojingfang.cn/tools/filebeam.html" target="_blank" rel="noopener noreferrer">💎 升级专业版</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- 连接引导卡片 (手机扫码) -->
+    <section class="card connection-card">
+      <div class="qr-wrapper">
+        <img id="qrCodeImg" src="/api/qrcode" alt="手机扫码连接" class="qr-image" />
+        <span class="qr-hint">📱 手机直接扫码打开</span>
+      </div>
+      <div class="connection-info">
+        <h3>跨设备连接指南</h3>
+        <p class="info-desc">只要手机与电脑连入<strong>同一路由器 WiFi / 局域网</strong>，手机无需安装任何客户端软件：</p>
+        <div class="url-box">
+          <span id="serverUrl" class="url-text">正在获取局域网地址...</span>
+          <button class="btn-copy" onclick="copyServerUrl()">📋 复制链接</button>
+        </div>
+        <p class="network-tips">💡 手机打开原生相机或微信/自带浏览器扫描左侧二维码，即可开始双向互传。</p>
+      </div>
+    </section>
+
+    <!-- 发送/上传区域 -->
+    <section class="card upload-card">
+      <div class="drop-zone" id="dropZone" onclick="triggerFileInput()">
+        <input type="file" id="fileInput" multiple style="display: none;">
+        <div class="upload-icon">📤</div>
+        <div class="upload-title">点击或拖拽文件到这里发送</div>
+        <div class="upload-subtitle">
+          <span class="limit-tag">🟢 免费版限单文件 ≤ 10MB</span>
+          <span>支持日常照片、原图、Word/PDF 文档、发票音频秒传</span>
+        </div>
+      </div>
+
+      <!-- 传输进度条 -->
+      <div id="progressContainer" class="progress-container" style="display: none;">
+        <div class="progress-info">
+          <span id="progressFileName" class="progress-name">文件名.jpg</span>
+          <span id="progressSpeed" class="progress-speed">0 KB/s</span>
+          <span id="progressPercent" class="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progressBar" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 文件与记录选项卡 -->
+    <section class="card tabs-card">
+      <div class="tab-headers">
+        <button class="tab-btn active" onclick="switchTab('received')">📥 接收的文件 (<span id="receivedCount">0</span>)</button>
+        <button class="tab-btn" onclick="switchTab('shared')">📁 电脑共享文件 (<span id="sharedCount">0</span>)</button>
+        <button class="tab-btn" onclick="switchTab('history')">📋 传输记录 (<span id="historyCount">0</span>)</button>
+      </div>
+
+      <!-- 接收文件列表 -->
+      <div id="tabReceived" class="tab-content active">
+        <div class="content-header">
+          <span class="content-tip">💡 手机端上传的文件将实时保存在电脑 received 目录中</span>
+          <button class="btn-action-sm" onclick="fetchFiles()">🔄 刷新列表</button>
+        </div>
+        <div id="receivedList" class="file-list">
+          <div class="empty-state">暂无接收的文件</div>
+        </div>
+      </div>
+
+      <!-- 共享文件列表 -->
+      <div id="tabShared" class="tab-content">
+        <div class="content-header">
+          <span class="content-tip">💡 电脑 shared 目录中的文件，手机扫码后即可在手机上直接下载查看</span>
+          <button class="btn-action-sm" onclick="fetchFiles()">🔄 刷新列表</button>
+        </div>
+        <div id="sharedList" class="file-list">
+          <div class="empty-state">电脑 shared 目录中暂无文件</div>
+        </div>
+      </div>
+
+      <!-- 传输记录列表 -->
+      <div id="tabHistory" class="tab-content">
+        <div class="content-header">
+          <span class="content-tip">💡 本地记录仅供界面查看，点击清除记录不会删除磁盘中的已存文件</span>
+          <button class="btn-action-sm btn-danger-sm" onclick="clearHistory()">🗑️ 清空记录</button>
+        </div>
+        <div id="historyList" class="file-list">
+          <div class="empty-state">暂无历史传输记录</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 使用说明与对比弹窗 -->
+  <div id="helpModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">📖</span>
+          <h2>使用说明与主流互传工具对比</h2>
+        </div>
+        <button class="modal-close" onclick="closeHelpModal()">×</button>
+      </div>
+      <div class="modal-body modal-scroll">
+        <h3>🚀 FileBeam Lite 极速使用教程</h3>
+        <ol class="help-steps">
+          <li><strong>确保在同一网络</strong>：让电脑与手机连接到同一个家用 WiFi 路由器（或手机开热点给电脑连）。</li>
+          <li><strong>手机扫码即用</strong>：手机使用自带相机、扫一扫或浏览器直接扫描电脑屏幕二维码，立刻进入互传主页。</li>
+          <li><strong>双向极速传输</strong>：
+            <ul>
+              <li><strong>手机传给电脑</strong>：在手机网页上点击“发送文件”，选择相册图片或文档，电脑端 <code>received</code> 目录秒接收。</li>
+              <li><strong>电脑传给手机</strong>：电脑端将要共享的文件直接放入 <code>shared</code> 目录，手机端在“电脑共享文件”里点下载即可。</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3 style="margin-top: 24px;">📊 与市面上其他同类互传工具的对比</h3>
+        <div class="table-responsive">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>对比维度</th>
+                <th class="th-highlight">FileBeam (本项目)</th>
+                <th>LocalSend (开源热门)</th>
+                <th>copyparty (开源网盘)</th>
+                <th>华为手机助手 / 华为分享</th>
+                <th>微信传输助手</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>手机端安装要求</strong></td>
+                <td class="td-highlight"><strong>🟢 零安装</strong>（手机扫码打开浏览器即用）</td>
+                <td>🔴 手机电脑两端都必须去应用商店安装 APP</td>
+                <td>🟢 手机浏览器可访问（但界面繁杂）</td>
+                <td>🔴 仅限华为鸿蒙手机生态，需装配套助手</td>
+                <td>🟡 双方需安装微信并登录个人账号</td>
+              </tr>
+              <tr>
+                <td><strong>跨平台兼容性</strong></td>
+                <td class="td-highlight"><strong>🟢 全能通吃</strong>（安卓各品牌/iOS/Win/Mac）</td>
+                <td>🟢 跨平台（但依赖每台设备装包）</td>
+                <td>🟢 跨平台</td>
+                <td>🔴 品牌封闭（非华为手机或普通PC无法互联）</td>
+                <td>🟢 跨平台支持</td>
+              </tr>
+              <tr>
+                <td><strong>上手与交互体验</strong></td>
+                <td class="td-highlight"><strong>🟢 极简专注</strong>（电脑出二维码，手机扫码秒懂）</td>
+                <td>🟡 依赖局域网组播发现，部分网络搜不到设备</td>
+                <td>🔴 Geek 极客风格参数繁多，普通用户门槛高</td>
+                <td>🟡 需蓝牙配对或插数据线授权</td>
+                <td>🟡 经常选错聊天框或发错好友</td>
+              </tr>
+              <tr>
+                <td><strong>传输介质与隐私</strong></td>
+                <td class="td-highlight"><strong>🟢 纯局域网直连</strong>（数据绝不出内网，零中转）</td>
+                <td>🟢 纯局域网直连</td>
+                <td>🟢 纯局域网直连</td>
+                <td>🟢 局域网/数据线直连</td>
+                <td>🔴 上传至第三方腾讯云端服务器，有隐私风险</td>
+              </tr>
+              <tr>
+                <td><strong>外网依赖</strong></td>
+                <td class="td-highlight"><strong>🟢 零外网依赖</strong>（路由器即使断开宽带仍能互传）</td>
+                <td>🟢 零外网依赖</td>
+                <td>🟢 零外网依赖</td>
+                <td>🟢 零外网依赖</td>
+                <td>🔴 必须接入公网互联网，无宽带即瘫痪</td>
+              </tr>
+              <tr>
+                <td><strong>针对移动端的优化</strong></td>
+                <td class="td-highlight"><strong>🟢 屏幕常亮防休眠 + 防拦截一键下载</strong></td>
+                <td>🟡 锁屏后容易被手机系统后台杀进程</td>
+                <td>🟡 依赖原生网页，无手机防休眠锁</td>
+                <td>🟢 系统原生常驻保活</td>
+                <td>🔴 手机息屏经常导致大文件传输中断</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 提示框 -->
+  <div id="toast" class="toast"></div>
+
+  <footer class="app-footer">
+    <p>FileBeam Lite · 极简高效的纯局域网跨设备传输利器 · 基于开源标准开发</p>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
