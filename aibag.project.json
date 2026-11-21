@@ -1,0 +1,10 @@
+{
+  "name": "FileBeam_Lite",
+  "version": "1.0.0",
+  "project_type": "python",
+  "entrypoint": "server.py",
+  "console": true,
+  "runtime_dirs": ["received", "shared"],
+  "asset_paths": ["static"],
+  "data_files": ["config.json"]
+}
