@@ -1,6 +1,6 @@
 {
   "name": "FileBeam_Lite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "project_type": "python",
   "entrypoint": "server.py",
   "console": true,

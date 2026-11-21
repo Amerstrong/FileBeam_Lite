@@ -13,9 +13,15 @@ import json
 import time
 import socket
 import secrets
+import hashlib
+import uuid
+import getpass
 import mimetypes
 from pathlib import Path
 from datetime import datetime
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 # Windows 控制台 UTF-8 支持
 if sys.platform == "win32":
@@ -32,6 +38,7 @@ RECEIVED_DIR = BASE_DIR / "received"
 SHARED_DIR   = BASE_DIR / "shared"
 STATIC_DIR   = BASE_DIR / "static"
 CONFIG_FILE  = BASE_DIR / "config.json"
+LICENSE_FILE = BASE_DIR / "license.json"
 
 RECEIVED_DIR.mkdir(parents=True, exist_ok=True)
 SHARED_DIR.mkdir(parents=True, exist_ok=True)
@@ -39,13 +46,25 @@ STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_PORT = 5000
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB 免费版限制
-PRO_UPGRADE_URL_DEFAULT = "https://github.com/your-repo/filebeam"  # 官方网站上线后可替换
+PRO_UPGRADE_URL_DEFAULT = "https://wojingfang.cn/tools/filebeam.html"
+ACTIVATION_API_DEFAULT = "https://api.wojingfang.cn"
 
 def load_config():
     if CONFIG_FILE.exists():
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cfg = json.load(f)
+            changed = False
+            if not cfg.get("pro_upgrade_url") or "your-repo" in cfg.get("pro_upgrade_url", ""):
+                cfg["pro_upgrade_url"] = PRO_UPGRADE_URL_DEFAULT
+                changed = True
+            if not cfg.get("activation_api_url"):
+                cfg["activation_api_url"] = ACTIVATION_API_DEFAULT
+                changed = True
+            if changed:
+                with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, ensure_ascii=False, indent=2)
+            return cfg
         except Exception:
             pass
     cfg = {
@@ -53,6 +72,7 @@ def load_config():
         "port": DEFAULT_PORT,
         "max_size_mb": 10,
         "pro_upgrade_url": PRO_UPGRADE_URL_DEFAULT,
+        "activation_api_url": ACTIVATION_API_DEFAULT,
         "received_dir": str(RECEIVED_DIR),
         "shared_dir": str(SHARED_DIR)
     }
@@ -62,6 +82,62 @@ def load_config():
 
 CONFIG = load_config()
 PORT = CONFIG.get("port", DEFAULT_PORT)
+
+
+def get_machine_code():
+    """Create a stable, non-reversible 12-character device identifier."""
+    # Never expose the raw MAC address, hostname, or Windows account name.
+    fingerprint = "|".join((
+        "FileBeam-Pro",
+        socket.gethostname(),
+        f"{uuid.getnode():012x}",
+        getpass.getuser(),
+    ))
+    return hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()[:12].upper()
+
+
+MACHINE_CODE = get_machine_code()
+
+
+def load_license_state():
+    if not LICENSE_FILE.exists():
+        return {"activated": False, "machine_code": MACHINE_CODE}
+    try:
+        data = json.loads(LICENSE_FILE.read_text(encoding="utf-8"))
+        activated = (
+            data.get("machine_code") == MACHINE_CODE
+            and bool(str(data.get("activation_code", "")).strip())
+        )
+        return {
+            "activated": activated,
+            "machine_code": MACHINE_CODE,
+            "activated_at": data.get("activated_at") if activated else None,
+        }
+    except Exception:
+        return {"activated": False, "machine_code": MACHINE_CODE}
+
+
+def verify_activation_code(activation_code: str):
+    """Verify a code against the same machine-code record used by the website."""
+    api_base = str(CONFIG.get("activation_api_url", ACTIVATION_API_DEFAULT)).rstrip("/")
+    query = urlencode({"code": MACHINE_CODE})
+    request = Request(
+        f"{api_base}/query?{query}",
+        headers={"User-Agent": "FileBeam-Lite/1.0.1", "Accept": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read(256 * 1024).decode("utf-8"))
+    except (URLError, TimeoutError, ValueError, OSError):
+        return False, "unavailable", "暂时无法连接授权服务，请稍后重试。"
+
+    expected = str(payload.get("activation") or "").strip().upper()
+    submitted = activation_code.strip().upper()
+    if payload.get("success") and expected and secrets.compare_digest(expected, submitted):
+        return True, "activated", "激活码验证成功，授权已保存到本机。"
+    if payload.get("status") == "pending" or not payload.get("success"):
+        return False, "pending", str(payload.get("msg") or "授权仍在处理中，请确认付款后稍后重试。")
+    return False, "invalid", "激活码与本机机器码不匹配，请核对后重新输入。"
 
 # ─── 获取本机局域网 IP（智能过滤虚拟网卡）──────────────────────────────────────
 def get_local_ip():
@@ -156,19 +232,72 @@ def index():
 def get_info():
     ip = get_local_ip()
     url = f"http://{ip}:{PORT}"
+    license_state = load_license_state()
     return jsonify({
         "edition": "FileBeam Lite (免费开源版)",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "ip": ip,
         "port": PORT,
         "url": url,
         "max_size_mb": 10,
         "max_size_bytes": MAX_FILE_SIZE,
         "pro_upgrade_url": CONFIG.get("pro_upgrade_url", PRO_UPGRADE_URL_DEFAULT),
+        "machine_code": MACHINE_CODE,
+        "activated": license_state["activated"],
         "received_dir": str(RECEIVED_DIR),
         "shared_dir": str(SHARED_DIR),
         "received_count": len(list_folder_files(RECEIVED_DIR)),
         "shared_count": len(list_folder_files(SHARED_DIR))
+    })
+
+
+@app.route("/api/activation-status", methods=["GET"])
+def activation_status():
+    state = load_license_state()
+    return jsonify({
+        "success": True,
+        "machine_code": MACHINE_CODE,
+        "activated": state["activated"],
+        "activated_at": state.get("activated_at"),
+        "pro_upgrade_url": CONFIG.get("pro_upgrade_url", PRO_UPGRADE_URL_DEFAULT),
+    })
+
+
+@app.route("/api/activate", methods=["POST"])
+def activate_license():
+    data = request.get_json(silent=True) or {}
+    activation_code = str(data.get("activation_code", "")).strip().upper()
+    if not activation_code:
+        return jsonify({"success": False, "error": "EMPTY_CODE", "message": "请输入激活码。"}), 400
+    if len(activation_code) > 80:
+        return jsonify({"success": False, "error": "INVALID_CODE", "message": "激活码格式不正确。"}), 400
+
+    valid, status, message = verify_activation_code(activation_code)
+    if not valid:
+        return jsonify({
+            "success": False,
+            "status": status,
+            "message": message,
+            "machine_code": MACHINE_CODE,
+        }), 200
+
+    activated_at = datetime.now().isoformat(timespec="seconds")
+    LICENSE_FILE.write_text(
+        json.dumps({
+            "product": "FileBeam Pro",
+            "machine_code": MACHINE_CODE,
+            "activation_code": activation_code,
+            "activated_at": activated_at,
+        }, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return jsonify({
+        "success": True,
+        "status": "activated",
+        "message": message,
+        "machine_code": MACHINE_CODE,
+        "activated": True,
+        "activated_at": activated_at,
     })
 
 @app.route("/api/files", methods=["GET"])

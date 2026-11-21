@@ -596,6 +596,114 @@ body {
   margin-top: 8px;
 }
 
+.license-panel {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid #dbe7f3;
+  border-radius: var(--radius-md);
+  background: #f8fbff;
+}
+
+.license-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.license-label {
+  display: block;
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+#machineCodeValue {
+  color: #1d4ed8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.license-copy {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.activation-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.activation-row {
+  display: flex;
+  gap: 8px;
+}
+
+.activation-row input {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  outline: none;
+}
+
+.activation-row input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.activation-row button {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.activation-row button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.activation-status {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.activation-status.success {
+  color: #047857;
+}
+
+.activation-status.error {
+  color: #b91c1c;
+}
+
 /* 说明与对比表格 */
 .help-steps {
   margin-left: 20px;

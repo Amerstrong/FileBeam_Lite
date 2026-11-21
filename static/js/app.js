@@ -7,7 +7,9 @@
 const state = {
   maxSizeBytes: 10 * 1024 * 1024, // 10MB 限制
   serverUrl: '',
-  proUpgradeUrl: 'https://github.com/your-repo/filebeam',
+  proUpgradeUrl: 'https://wojingfang.cn/tools/filebeam.html',
+  machineCode: '',
+  activated: false,
   history: JSON.parse(localStorage.getItem('fblite_history') || '[]'),
   currentTab: 'received',
   isUploading: false
@@ -29,12 +31,15 @@ async function initAppInfo() {
     state.serverUrl = data.url;
     state.proUpgradeUrl = data.pro_upgrade_url || state.proUpgradeUrl;
     state.maxSizeBytes = data.max_size_bytes || state.maxSizeBytes;
+    state.machineCode = data.machine_code || '';
+    state.activated = Boolean(data.activated);
 
     const urlElem = document.getElementById('serverUrl');
     if (urlElem) urlElem.textContent = data.url;
 
     const proLinkElem = document.getElementById('btnUpgradeProLink');
     if (proLinkElem) proLinkElem.href = state.proUpgradeUrl;
+    updateActivationUI();
   } catch (err) {
     console.error('获取服务端信息失败:', err);
     showToast('无法连接服务端，请确认服务已启动', 'error');
@@ -335,10 +340,95 @@ function switchTab(tab) {
 // ─── 弹窗控制 ─────────────────────────────────────────────────────────────────
 function openProModal() {
   document.getElementById('proModal').style.display = 'flex';
+  refreshActivationStatus();
 }
 
 function closeProModal() {
   document.getElementById('proModal').style.display = 'none';
+}
+
+function updateActivationUI(message = '', type = '') {
+  const machineCodeElem = document.getElementById('machineCodeValue');
+  const statusElem = document.getElementById('activationStatus');
+  const button = document.getElementById('btnActivatePro');
+  if (machineCodeElem) machineCodeElem.textContent = state.machineCode || '暂不可用';
+  if (statusElem) {
+    if (message) {
+      statusElem.textContent = message;
+      statusElem.className = `activation-status ${type}`.trim();
+    } else if (state.activated) {
+      statusElem.textContent = '✅ 本机已完成 Pro 授权验证，可前往官网获取专业版客户端。';
+      statusElem.className = 'activation-status success';
+    } else {
+      statusElem.textContent = '付款后由后台将激活码绑定到本机机器码。';
+      statusElem.className = 'activation-status';
+    }
+  }
+  if (button && state.activated) {
+    button.textContent = '已激活';
+    button.disabled = true;
+  }
+}
+
+async function refreshActivationStatus() {
+  try {
+    const res = await fetch('/api/activation-status', { cache: 'no-store' });
+    const data = await res.json();
+    state.machineCode = data.machine_code || state.machineCode;
+    state.activated = Boolean(data.activated);
+    updateActivationUI();
+  } catch (err) {
+    updateActivationUI('无法读取本机授权状态，请确认服务仍在运行。', 'error');
+  }
+}
+
+async function copyMachineCode() {
+  const machineCode = state.machineCode || document.getElementById('machineCodeValue')?.textContent || '';
+  if (!machineCode || machineCode === '暂不可用' || machineCode === '读取中...') {
+    showToast('机器码暂不可用', 'warning');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(machineCode);
+    showToast('机器码已复制');
+  } catch (err) {
+    fallbackCopy(machineCode);
+    showToast('机器码已复制');
+  }
+}
+
+async function activatePro(event) {
+  event.preventDefault();
+  const input = document.getElementById('activationCodeInput');
+  const button = document.getElementById('btnActivatePro');
+  const activationCode = input.value.trim().toUpperCase();
+  if (!activationCode) {
+    updateActivationUI('请先输入激活码。', 'error');
+    input.focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = '验证中...';
+  updateActivationUI('正在连接授权服务，请稍候...');
+  try {
+    const res = await fetch('/api/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activation_code: activationCode })
+    });
+    const data = await res.json();
+    state.machineCode = data.machine_code || state.machineCode;
+    state.activated = Boolean(data.success && data.activated);
+    updateActivationUI(data.message || (data.success ? '激活成功。' : '激活失败。'), data.success ? 'success' : 'error');
+    if (data.success) input.value = '';
+  } catch (err) {
+    updateActivationUI('无法连接本地服务，请稍后重试。', 'error');
+  } finally {
+    if (!state.activated) {
+      button.disabled = false;
+      button.textContent = '验证激活码';
+    }
+  }
 }
 
 function openHelpModal() {

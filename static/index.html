@@ -153,19 +153,53 @@
             </div>
           </div>
           <div class="feature-item">
+            <span class="feat-icon">🗂️</span>
+            <div>
+              <strong>文件夹批量传输</strong>
+              <p>支持选择整个文件夹、浏览目录并批量上传或下载，不再逐个挑选素材。</p>
+            </div>
+          </div>
+          <div class="feature-item">
             <span class="feat-icon">🛡️</span>
             <div>
               <strong>传输日志生命周期管理</strong>
               <p>支持 24小时 / 3天 / 7天 / 退出即清自动清理，企业与家庭私密安全两不误。</p>
             </div>
           </div>
+          <div class="feature-item">
+            <span class="feat-icon">🔧</span>
+            <div>
+              <strong>自定义固定端口</strong>
+              <p>可固定局域网服务端口，便于防火墙规则、书签、快捷入口和长期部署。</p>
+            </div>
+          </div>
         </div>
-        <!-- 预留官方网站升级链接 -->
+        <div class="license-panel">
+          <div class="license-heading">
+            <div>
+              <span class="license-label">本机机器码</span>
+              <code id="machineCodeValue">读取中...</code>
+            </div>
+            <button type="button" class="license-copy" onclick="copyMachineCode()">复制</button>
+          </div>
+          <form class="activation-form" onsubmit="activatePro(event)">
+            <label for="activationCodeInput">输入激活码</label>
+            <div class="activation-row">
+              <input id="activationCodeInput" type="text" autocomplete="off" spellcheck="false"
+                placeholder="例如：FB-XXXX-XXXX-XXXX">
+              <button id="btnActivatePro" type="submit">验证激活码</button>
+            </div>
+          </form>
+          <div id="activationStatus" class="activation-status" role="status" aria-live="polite">
+            付款后由后台将激活码绑定到本机机器码。
+          </div>
+        </div>
         <div class="upgrade-action-box">
-          <a id="btnUpgradeProLink" href="https://github.com/your-repo/filebeam" target="_blank" class="btn-upgrade-pro">
+          <a id="btnUpgradeProLink" href="https://wojingfang.cn/tools/filebeam.html" target="_blank"
+            rel="noopener noreferrer" class="btn-upgrade-pro">
             🌟 前往官方网站了解并升级 Pro 版
           </a>
-          <p class="upgrade-note">（💡 官方网站布置上线后，此链接将直接跳转至官网授权与下载中心）</p>
+          <p class="upgrade-note">官方网站提供免费版与专业版对比、支付宝购买流程和激活码获取指引。</p>
         </div>
       </div>
     </div>

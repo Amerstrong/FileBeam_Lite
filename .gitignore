@@ -4,6 +4,7 @@ __pycache__/
 venv/
 received/
 shared/
+license.json
 build/
 dist/
 *.log
