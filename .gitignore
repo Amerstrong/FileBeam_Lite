@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+received/
+shared/
+build/
+dist/
+*.log
+.idea/
+.vscode/
+
