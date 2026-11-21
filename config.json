@@ -1,0 +1,9 @@
+{
+  "device_name": "FileBeam-Lite-PC",
+  "port": 5000,
+  "max_size_mb": 10,
+  "pro_upgrade_url": "https://wojingfang.cn/tools/filebeam.html",
+  "activation_api_url": "https://api.wojingfang.cn",
+  "received_dir": "received",
+  "shared_dir": "shared"
+}
